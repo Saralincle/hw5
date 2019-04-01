@@ -1,0 +1,235 @@
+1.图像读取imread_all:
+test1=imread('test1.pgm');
+test2=imread('test2.tif');
+test3=imread('test3_corrupt.pgm');
+test4=imread('test4 copy.bmp');
+
+
+
+2.巴特沃斯低通滤波器
+function [H]=BLPF(A,d0,n)
+[p,q]=size(A);
+m_mid=round(p/2);
+n_mid=round(q/2);
+for i=1:p
+    for j=1:q
+        d=sqrt((i-m_mid)^2+(j-n_mid)^2);
+        H(i,j)=1/(1+(d/d0)^(2*n));
+    end
+end
+3.高斯低通滤波器
+function [H]=GLPF(A,d0)
+[p,q]=size(A);
+m_mid=round(p/2);
+n_mid=round(q/2);
+for i=1:p
+    for j=1:q
+        d=sqrt((i-m_mid)^2+(j-n_mid)^2);
+        H(i,j)=exp(-d^2/(2*d0^2));
+    end
+
+end
+
+
+
+4.低通滤波函数LPfilter，d0为截止频率，n为巴特沃斯滤波器阶数，type为低通滤波器种类选择：
+function[C,p]=LPfilter(A,d0,n,type)
+subplot(241);
+imshow(A);
+title('原图');
+B=padding(A);
+subplot(242);
+imshow(uint8(B));title('补零后图像');
+P=size(B,1);
+Q=size(B,2);
+if(type==1)
+    H=BLPF(B,d0,n);
+else
+    H=GLPF(B,d0);
+end
+%d0=10;
+for i=1:P
+    for j=1:Q
+        B(i,j)=B(i,j)*(-1)^(i+j-2);%%%%%%%移至图像中心
+    end
+end
+%d=36
+subplot(243);
+imshow(uint8(B));title('移位后图像');
+F=fft2(B);
+P1=sum(abs(F));
+FF=1+log(abs(F));
+subplot(244);
+imshow(FF,[0,20]);
+title('频率谱');
+subplot(245);
+imshow(H);title('滤波器');
+K=F.*H;%%滤波
+P2=sum(abs(K));
+p=P2/P1;
+KK=1+log(abs(K));
+subplot(246);
+imshow(KK,[0,20]);
+title('滤波后频率谱');
+C=real(ifft2(K));
+
+for i=1:P
+    for j=1:Q
+        C(i,j)=C(i,j)*(-1)^(i+j-2);%%%%%%%%%移回
+    end
+end
+subplot(247);
+imshow(C,[]);
+title('滤波后图像');
+subplot(248);
+imshow(uint8(C(1:P/2,1:Q/2)));
+title('裁剪后图像');
+
+
+
+5.高通滤波器函数HPfilter，d0为截止频率，n为巴特沃斯滤波器阶数，type为滤波器的种类：
+function[C,p]=HPfilter(A,d0,n,type)
+subplot(241);
+imshow(A);
+title('原图');
+B=padding(A);
+subplot(242);
+imshow(uint8(B));title('补零后图像');
+P=size(B,1);
+Q=size(B,2);
+if(type==1)%%butterworth
+    H=1-BLPF(B,d0,n);
+else if(type==2)%%gaussian
+    H=1-GLPF(B,d0);
+    else if(type==3)%%laplace
+                H=1+5*(1-GLPF(B,d0));
+        end
+    end
+end
+%d0=10;
+for i=1:P
+    for j=1:Q
+        B(i,j)=B(i,j)*(-1)^(i+j-2);%%%%%%%移至图像中心
+    end
+end
+%d=36
+subplot(243);
+imshow(uint8(B));title('移位后图像');
+F=fft2(B);
+P1=sum(abs(F));
+FF=1+log(abs(F));
+subplot(244);
+imshow(FF,[0,20]);
+title('频率谱');
+subplot(245);
+imshow(H,[]);title('滤波器');
+K=F.*H;%%滤波
+P2=sum(abs(K));
+p=P2/P1;
+KK=1+log(abs(K));
+subplot(246);
+imshow(KK,[]);
+title('滤波后频率谱');
+C=real(ifft2(K));
+
+for i=1:P
+    for j=1:Q
+        C(i,j)=C(i,j)*(-1)^(i+j-2);%%%%%%%%%移回
+    end
+end
+subplot(247);
+imshow(C,[]);
+title('边缘图像');
+if(type==1||type==2)
+    for i=1:P
+    for j=1:Q
+        if(C(i,j)>0)
+            C(i,j)=1;
+        else
+            C(i,j)=0;
+        end
+    end
+end
+end
+subplot(248);
+imshow(C(1:P/2,1:Q/2),[]);
+title('增强后图像');
+
+
+6.拉普拉斯算子滤波：
+function[G]=LAPfilter(A)
+subplot(241);
+imshow(A);
+title('原图');
+B=padding(A);
+subplot(242);
+imshow(uint8(B));title('补零后图像');
+P=size(B,1);
+Q=size(B,2);
+H=LHPF(B);
+%d0=10;
+for i=1:P
+    for j=1:Q
+        B(i,j)=B(i,j)*(-1)^(i+j-2);%%%%%%%移至图像中心
+    end
+end
+%d=36
+subplot(243);
+imshow(uint8(B));title('移位后图像');
+F=fft2(B);
+FF=1+log(abs(F));
+subplot(244);
+imshow(FF,[0,20]);
+title('频率谱');
+subplot(245);
+imshow(H,[]);title('滤波器');
+K=F.*H;%%滤波
+
+KK=1+log(abs(K));
+subplot(246);
+imshow(KK,[]);
+title('滤波后频率谱');
+C=real(ifft2(K));
+
+for i=1:P
+    for j=1:Q
+        C(i,j)=C(i,j)*(-1)^(i+j-2);%%%%%%%%%移回
+    end
+end
+C=C/max(max(abs(C)));
+subplot(247);
+imshow(C,[]);
+title('边缘图像');
+A_max=max(max(A));
+A_min=min(min(A));
+for i=1:size(A,1)
+    for j=1:size(A,2)
+        A(i,j)=(A(i,j)-A_min)/(A_max-A_min);
+    end
+end
+G=(double(A)-C(1:P/2,1:Q/2));
+subplot(248);
+imshow(G);
+title('增强后图像');
+
+
+7.拉普拉斯频域函数：
+function [H]=LHPF(A)
+[p,q]=size(A);
+m_mid=round(p/2);
+n_mid=round(q/2);
+for i=1:p
+    for j=1:q
+        d=sqrt((i-m_mid)^2+(j-n_mid)^2);
+        H(i,j)=-4*(pi^2)*d^2;
+    end
+end
+
+
+8.补零函数：
+function [B]=padding(A)
+[m,n]=size(A);
+P=2*m;
+Q=2*n;
+B=zeros(P,Q);
+B(1:m,1:n)=A;
